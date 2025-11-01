@@ -1,0 +1,45 @@
+server:
+  port: 8080  # Puerto del API Gateway
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: "http://localhost:8081/api/v1/jwks/.well-known/jwks.json"
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      routes:
+        - id: iam-service-route
+          uri: lb://iam-service
+          predicates:
+            - Path=/iam-service/**,/api/v1/authentication/**,/api/v1/roles/**,/api/v1/users/**,/api/v1/jwks/**
+
+        - id: fleet-service-route
+          uri: lb://fleet-service
+          predicates:
+            - Path=/fleet-service/**,/api/v1/drivers/**,/api/v1/routes/**,/api/v1/vehicles/**
+
+        - id: delivery-service-route
+          uri: lb://delivery-service
+          predicates:
+            - Path=/delivery-service/**,/api/v1/client/**,/api/v1/orders/**
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    config-url: /v3/api-docs/swagger-config
+    urls:
+      - name: iam-service
+        url: /iam-service/v3/api-docs
+      - name: delivery-service
+        url: /delivery-service/v3/api-docs
+      - name: fleet-service
+        url: /fleet-service/v3/api-docs

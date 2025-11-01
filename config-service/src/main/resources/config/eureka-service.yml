@@ -1,0 +1,11 @@
+server:
+  port: 8761
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    register-with-eureka: false  # <-- La propiedad clave
+    fetch-registry: false        # <-- La propiedad clave
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

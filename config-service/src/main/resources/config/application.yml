@@ -1,0 +1,9 @@
+# Esta configuración se aplica a TODOS los servicios clientes
+eureka:
+  client:
+    # Ahora, todos los servicios buscarán Eureka en esta dirección
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    # Prefiere usar la IP en lugar del hostname (más confiable)
+    prefer-ip-address: true

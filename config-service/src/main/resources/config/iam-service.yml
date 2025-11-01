@@ -1,0 +1,36 @@
+server:
+  port: 8081 # El puerto estándar que definimos para el IAM
+
+# --- ¡LA NUEVA CONFIGURACIÓN DE JWT! ---
+# Estas son las propiedades que leerá tu nueva clase 'JwtKeyProvider'
+authorization:
+  jwt:
+    # Ruta a las claves que están en 'src/main/resources' del iam-service
+    private-key-path: "classpath:jwt.key"
+    public-key-path: "classpath:jwt.key.pub"
+    expiration:
+      days: 7
+
+# --- Configuración de la Base de Datos ---
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRESHOST}:${POSTGRESPORT}/${POSTGRES_DATABASE}
+    username: ${POSTGRESUSER:postgres}
+    password: ${POSTGRESPASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update # 'validate' o 'none' en producción
+      naming:
+        physical-strategy: org.upc.iamservice.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
+    show-sql: true
+
+springdoc:
+  # Habilitamos la generación del JSON de OpenAPI
+  api-docs:
+    enabled: true
+    # Esta es la URL donde expondrán su JSON
+    path: /v3/api-docs
+  # ¡DESHABILITAMOS la UI en el microservicio! El Gateway se encargará.
+  swagger-ui:
+    enabled: false

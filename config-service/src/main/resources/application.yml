@@ -1,0 +1,17 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-service # Nombre con el que se registrará en Eureka
+  # --- Configuración del Servidor de Configuración (Modo Nativo) ---
+  profiles:
+    # 1. Le dice a Spring que active el perfil "native" (archivos locales)
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # 2. Le dice dónde buscar los archivos YML
+          # "classpath:/config/" apunta a la carpeta "src/main/resources/config/"
+          search-locations: classpath:/config/

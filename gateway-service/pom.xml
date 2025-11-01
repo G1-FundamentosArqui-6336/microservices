@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+
+        <!-- ======================= -->
+        <!--     CAMBIO DE VERSIÓN   -->
+        <!-- =LÍNEA CORREGIDA (debe ser 3.4.x para ser compatible) -->
+        <version>3.4.0</version>
+
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>org.upc</groupId>
+    <artifactId>gateway-service</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>gateway-service</name>
+    <description>gateway-service</description>
+    <url/>
+    <licenses>
+        <license/>
+    </licenses>
+    <developers>
+        <developer/>
+    </developers>
+    <scm>
+        <connection/>
+        <developerConnection/>
+        <tag/>
+        <url/>
+    </scm>
+    <properties>
+        <java.version>17</java.version>
+
+        <!-- ======================= -->
+        <!--      PROPIEDAD AÑADIDA  -->
+        <!-- ======================= -->
+        <!-- Esta propiedad es necesaria para el <dependencyManagement> -->
+        <spring-cloud.version>2024.0.1</spring-cloud.version>
+
+    </properties>
+    <dependencies>
+
+        <!-- ======================= -->
+        <!--  DEPENDENCIAS AÑADIDAS  -->
+        <!-- ======================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- 1. Dependencia principal del Gateway (reactivo) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+            <version>2.5.0</version> </dependency>
+
+        <!-- 2. Cliente de Eureka (para descubrir otros servicios) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+
+        <!-- 3. Cliente de Config (para leer la configuración de application.yml) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+
+        <!-- 4. Seguridad (necesaria para @EnableWebFluxSecurity) -->
+        <!-- Spring Boot detectará WebFlux (del gateway) y cargará la seguridad reactiva -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- ======================= -->
+        <!-- FIN DEPENDENCIAS AÑADIDAS -->
+        <!-- ======================= -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- ======================= -->
+    <!--      BLOQUE AÑADIDO     -->
+    <!-- ======================= -->
+    <!-- Esto es OBLIGATORIO para gestionar las versiones de Spring Cloud -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
