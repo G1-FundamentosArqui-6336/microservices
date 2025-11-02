@@ -174,6 +174,11 @@ jobs:
           
           sed -i "s|ECR|$ECR|g" docker-compose.aws.yml
 
+      - name: Prep remote dir (/opt/cobox)
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            'set -e; sudo mkdir -p /opt/cobox && sudo chown $USER:$USER /opt/cobox'
+
       - name: Copy compose to EC2
         run: |
           scp -o StrictHostKeyChecking=no -i key.pem docker-compose.aws.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/cobox/
