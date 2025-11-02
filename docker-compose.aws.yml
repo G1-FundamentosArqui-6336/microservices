@@ -1,0 +1,118 @@
+version: "3.9"
+
+services:
+  config-service:
+    image: "${ECR}/config-service:${TAG:-latest}"
+    container_name: config-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=native
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:8888/actuator/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 25
+    restart: unless-stopped
+
+  eureka-service:
+    image: "${ECR}/eureka-service:${TAG:-latest}"
+    container_name: eureka-service
+    depends_on:
+      config-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:8761/actuator/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 25
+    restart: unless-stopped
+
+  iam-service:
+    image: "${ECR}/iam-service:${TAG:-latest}"
+    container_name: iam-service
+    depends_on:
+      eureka-service:
+        condition: service_healthy
+    environment:
+      # Alineado con tus YAML del Config Server
+      - POSTGRESHOST=${IAM_POSTGRESHOST}
+      - POSTGRESPORT=${IAM_POSTGRESPORT}
+      - POSTGRES_DATABASE=${IAM_POSTGRES_DATABASE}
+      - POSTGRESUSER=${IAM_POSTGRESUSER}
+      - POSTGRESPASSWORD=${IAM_POSTGRESPASSWORD}
+      # Resiliencia para esperar al Config Server
+      - SPRING_CLOUD_CONFIG_RETRY_ENABLED=true
+      - SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS=40
+      - SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL=1000
+      - SPRING_CLOUD_CONFIG_RETRY_MULTIPLIER=1.5
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:8081/actuator/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 25
+    restart: unless-stopped
+
+  fleet-service:
+    image: "${ECR}/fleet-service:${TAG:-latest}"
+    container_name: fleet-service
+    depends_on:
+      iam-service:
+        condition: service_healthy
+    environment:
+      - POSTGRESHOST=${FLEET_POSTGRESHOST}
+      - POSTGRESPORT=${FLEET_POSTGRESPORT}
+      - POSTGRES_DATABASE=${FLEET_POSTGRES_DATABASE}
+      - POSTGRESUSER=${FLEET_POSTGRESUSER}
+      - POSTGRESPASSWORD=${FLEET_POSTGRESPASSWORD}
+      - SPRING_CLOUD_CONFIG_RETRY_ENABLED=true
+      - SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS=40
+      - SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL=1000
+      - SPRING_CLOUD_CONFIG_RETRY_MULTIPLIER=1.5
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:8082/actuator/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 25
+    restart: unless-stopped
+
+  delivery-service:
+    image: "${ECR}/delivery-service:${TAG:-latest}"
+    container_name: delivery-service
+    depends_on:
+      iam-service:
+        condition: service_healthy
+    environment:
+      - POSTGRESHOST=${DELIVERY_POSTGRESHOST}
+      - POSTGRESPORT=${DELIVERY_POSTGRESPORT}
+      - POSTGRES_DATABASE=${DELIVERY_POSTGRES_DATABASE}
+      - POSTGRESUSER=${DELIVERY_POSTGRESUSER}
+      - POSTGRESPASSWORD=${DELIVERY_POSTGRESPASSWORD}
+      - SPRING_CLOUD_CONFIG_RETRY_ENABLED=true
+      - SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS=40
+      - SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL=1000
+      - SPRING_CLOUD_CONFIG_RETRY_MULTIPLIER=1.5
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:8083/actuator/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 25
+    restart: unless-stopped
+
+  gateway-service:
+    image: "${ECR}/gateway-service:${TAG:-latest}"
+    container_name: gateway-service
+    depends_on:
+      eureka-service:
+        condition: service_healthy
+      iam-service:
+        condition: service_healthy
+      fleet-service:
+        condition: service_healthy
+      delivery-service:
+        condition: service_healthy
+    ports: [ "80:8080" ]
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:8080/actuator/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 25
+    restart: unless-stopped
