@@ -6,9 +6,9 @@ services:
     container_name: config-service
     environment:
       - SPRING_PROFILES_ACTIVE=native
-    ports: ["8888:8888"]
+    ports: [ "8888:8888" ]
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8888/actuator/health"]
+      test: [ "CMD","curl","-f","http://localhost:8888/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -19,9 +19,9 @@ services:
     depends_on:
       config-service:
         condition: service_healthy
-    ports: ["8761:8761"]   # solo para ver dashboard en local
+    ports: [ "8761:8761" ]   # solo para ver dashboard en local
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8761/actuator/health"]
+      test: [ "CMD","curl","-f","http://localhost:8761/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -33,13 +33,13 @@ services:
       eureka-service:
         condition: service_healthy
     environment:
-      - POSTGRESHOST=${IAM_POSTGRESHOST}
-      - POSTGRESPORT=${IAM_POSTGRESPORT}
+      - POSTGRES_HOST=${IAM_POSTGRES_HOST}
+      - POSTGRES_PORT=${IAM_POSTGRES_PORT}
       - POSTGRES_DATABASE=${IAM_POSTGRES_DATABASE}
-      - POSTGRESUSER=${IAM_POSTGRESUSER}
-      - POSTGRESPASSWORD=${IAM_POSTGRESPASSWORD}
+      - POSTGRES_USER=${IAM_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${IAM_POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8081/actuator/health"]
+      test: [ "CMD","curl","-f","http://localhost:8081/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -51,13 +51,13 @@ services:
       iam-service:
         condition: service_healthy
     environment:
-      - POSTGRESHOST=${FLEET_POSTGRESHOST}
-      - POSTGRESPORT=${FLEET_POSTGRESPORT}
+      - POSTGRES_HOST=${FLEET_POSTGRES_HOST}
+      - POSTGRES_PORT=${FLEET_POSTGRES_PORT}
       - POSTGRES_DATABASE=${FLEET_POSTGRES_DATABASE}
-      - POSTGRESUSER=${FLEET_POSTGRESUSER}
-      - POSTGRESPASSWORD=${FLEET_POSTGRESPASSWORD}
+      - POSTGRES_USER=${FLEET_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${FLEET_POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8082/actuator/health"]
+      test: [ "CMD","curl","-f","http://localhost:8082/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -69,13 +69,13 @@ services:
       iam-service:
         condition: service_healthy
     environment:
-      - POSTGRESHOST=${DELIVERY_POSTGRESHOST}
-      - POSTGRESPORT=${DELIVERY_POSTGRESPORT}
+      - POSTGRES_HOST=${DELIVERY_POSTGRES_HOST}
+      - POSTGRES_PORT=${DELIVERY_POSTGRES_PORT}
       - POSTGRES_DATABASE=${DELIVERY_POSTGRES_DATABASE}
-      - POSTGRESUSER=${DELIVERY_POSTGRESUSER}
-      - POSTGRESPASSWORD=${DELIVERY_POSTGRESPASSWORD}
+      - POSTGRES_USER=${DELIVERY_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${DELIVERY_POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8083/actuator/health"]
+      test: [ "CMD","curl","-f","http://localhost:8083/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -92,9 +92,9 @@ services:
         condition: service_healthy
       delivery-service:
         condition: service_healthy
-    ports: ["8080:8080"]
+    ports: [ "8080:8080" ]
     healthcheck:
-      test: ["CMD","curl","-f","http://localhost:8080/actuator/health"]
+      test: [ "CMD","curl","-f","http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
