@@ -1,17 +1,13 @@
 server:
-  port: 8083 
-                  
-# --- ¡CONFIGURACIÓN DE SEGURIDAD (CONFIANZA CERO)! ---
+  port: 8083
+
 spring:
   security:
     oauth2:
       resourceserver:
         jwt:
-          # Este servicio también contactará al iam-service para
-          # descargar la clave pública y validar los tokens.
-          jwk-set-uri: "http://localhost:8081/api/v1/jwks/.well-known/jwks.json"
-                  
-  # --- Base de Datos (Propia del Delivery-Service) ---
+          jwk-set-uri: "http://iam-service:8081/api/v1/jwks/.well-known/jwks.json"
+
   datasource:
     url: jdbc:postgresql://${POSTGRESHOST}:${POSTGRESPORT}/${POSTGRES_DATABASE}
     username: ${POSTGRESUSER:postgres}
@@ -19,17 +15,18 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update # 'validate' o 'none' en producción
+      ddl-auto: validate # 'validate' o 'none' en producción
       naming:
         physical-strategy: org.upc.deliveryservice.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
     show-sql: true
 
 springdoc:
-  # Habilitamos la generación del JSON de OpenAPI
   api-docs:
     enabled: true
-    # Esta es la URL donde expondrán su JSON
     path: /v3/api-docs
-  # ¡DESHABILITAMOS la UI en el microservicio! El Gateway se encargará.
   swagger-ui:
     enabled: false
+
+management:
+  endpoints.web.exposure.include: "health,info"
+  endpoint.health.probes.enabled: true

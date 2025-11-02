@@ -3,17 +3,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-
-        <!-- ======================= -->
-        <!--     CAMBIO DE VERSIÓN   -->
-        <!-- =LÍNEA CORREGIDA (debe ser 3.4.x para ser compatible) -->
-        <version>3.4.0</version>
-
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>org.upc</groupId>
+        <artifactId>coboxmicroservices</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>org.upc</groupId>
+
     <artifactId>gateway-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>gateway-service</name>
@@ -32,14 +27,7 @@
         <url/>
     </scm>
     <properties>
-        <java.version>17</java.version>
-
-        <!-- ======================= -->
-        <!--      PROPIEDAD AÑADIDA  -->
-        <!-- ======================= -->
-        <!-- Esta propiedad es necesaria para el <dependencyManagement> -->
         <spring-cloud.version>2024.0.1</spring-cloud.version>
-
     </properties>
     <dependencies>
 
@@ -60,7 +48,8 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-            <version>2.5.0</version> </dependency>
+            <version>2.5.0</version>
+        </dependency>
 
         <!-- 2. Cliente de Eureka (para descubrir otros servicios) -->
         <dependency>
@@ -89,6 +78,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
     </dependencies>
 
