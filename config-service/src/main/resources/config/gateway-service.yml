@@ -6,7 +6,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: "http://localhost:8081/api/v1/jwks/.well-known/jwks.json"
+          jwk-set-uri: "http://iam-service:8081/api/v1/jwks/.well-known/jwks.json"
 
   cloud:
     gateway:

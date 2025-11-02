@@ -1,8 +1,5 @@
 spring:
   application:
-    # Este nombre le dice al Config Server qué archivo buscar en Git
     name: iam-service
   config:
-    # Esta es la forma moderna (Spring Boot 3+) de conectarse al Config Server
-    # Reemplaza al antiguo 'bootstrap.yml'
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:http://config-server:8888"

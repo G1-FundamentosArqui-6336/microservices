@@ -1,7 +1,5 @@
 spring:
   application:
-    # Este nombre le dice al Config Server qué archivo buscar en Git
     name: gateway-service
   config:
-    # Le dice cómo importar la configuración desde el Config Server
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:http://config-server:8888"

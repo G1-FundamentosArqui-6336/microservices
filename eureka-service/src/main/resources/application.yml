@@ -1,8 +1,5 @@
 spring:
   application:
-    name: eureka-service # El nombre del servicio
+    name: eureka-service
   config:
-    # Diagnóstico: Desde Spring Boot 2.4 (y ahora de forma obligatoria en la versión 3+), la forma de conectar un servicio al Config Server ya no es usando el archivo bootstrap.yml.
-    # ESTA ES LA LÍNEA MÁGICA: Le dice a Spring que importe la configuración
-    # desde el Config Server ANTES de arrancar.
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:http://config-server:8888"
