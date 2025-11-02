@@ -188,21 +188,32 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOSSH'
             set -e
             cd /opt/cobox
-          
-            # Verifica que el script de SSM exista
-            if [ ! -x /opt/cobox/cobox-env.sh ]; then
-              echo "Falta /opt/cobox/cobox-env.sh en la EC2 (crea con SSM como vimos)"; exit 1
+
+            # Asegurar docker servicio activo (por si acaso)
+            if ! sudo systemctl is-active --quiet docker; then
+              sudo systemctl start docker
             fi
-          
-            # Login a ECR (usando el rol de la EC2 no hace falta keys locales)
-            aws ecr get-login-password --region us-east-2 \
-              | docker login --username AWS --password-stdin 308740034831.dkr.ecr.us-east-2.amazonaws.com
-          
-            # Cargar variables desde SSM (rol EC2)
-            source /opt/cobox/cobox-env.sh
-          
-            # Pull/Up con compose
-            docker compose -f docker-compose.aws.yml pull
-            docker compose -f docker-compose.aws.yml up -d
-            docker compose -f docker-compose.aws.yml ps
+
+            # Elegir comando de compose (prefiere plugin; si no, binario)
+            if docker compose version >/dev/null 2>&1; then
+              DC="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              DC="docker-compose"
+            else
+              echo "[ERROR] No hay compose instalado"; exit 1
+            fi
+
+            # Login a ECR con el rol de la instancia
+            aws ecr get-login-password --region ${AWS_REGION} \
+              | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+            # Variables (si usas script SSM opcional)
+            if [ -f /opt/cobox/cobox-env.sh ]; then
+              source /opt/cobox/cobox-env.sh
+            fi
+
+            export COMPOSE_PROJECT_NAME=cobox
+            $DC -f docker-compose.aws.yml pull
+            $DC -f docker-compose.aws.yml up -d
+            $DC -f docker-compose.aws.yml ps
           EOSSH
