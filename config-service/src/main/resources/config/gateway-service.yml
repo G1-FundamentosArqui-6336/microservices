@@ -43,3 +43,7 @@ springdoc:
         url: /delivery-service/v3/api-docs
       - name: fleet-service
         url: /fleet-service/v3/api-docs
+
+management:
+  endpoints.web.exposure.include: "health,info"
+  endpoint.health.probes.enabled: true
