@@ -26,7 +26,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",            // 👈 necesario para el spec JSON
                                 "/*/v3/api-docs/**",          // 👈 docs de microservicios vía gateway
                                 "/swagger-resources/**",      // 👈 para swagger-config interno
-                                "/swagger-config/**"          // 👈 algunas versiones lo usan
+                                "/swagger-config/**",          // 👈 algunas versiones lo usan
+                                "/actuator/**"
                         ).permitAll()
                         .anyExchange().authenticated()
                 )
