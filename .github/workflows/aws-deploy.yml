@@ -80,16 +80,21 @@ jobs:
 
       - name: Prep remote dir (/opt/cobox)
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+          SSH_OPTS="-o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ConnectionAttempts=3 -vvv"
+          ssh $SSH_OPTS -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
             'set -e; sudo mkdir -p /opt/cobox && sudo chown $USER:$USER /opt/cobox'
 
       - name: Copy compose to EC2
         run: |
-          scp -o StrictHostKeyChecking=no -i key.pem docker-compose.aws.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/cobox/
+          SCP_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ConnectionAttempts=3 -vvv"
+          scp $SCP_OPTS -i key.pem docker-compose.aws.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/cobox/
 
       - name: Deploy remotely (pull & up)
         run: |
-          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          SSH_OPTS="-o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ConnectionAttempts=3 -vvv"
+          n=0
+          until [ $n -ge 3 ]; do
+          ssh $SSH_OPTS -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF' && break
             set -e
 
             # ====== Variables mínimas necesarias ======
@@ -155,3 +160,11 @@ jobs:
           
             echo "[OK] Deploy done"
             EOF
+            n=$((n+1))
+            echo "[WARN] SSH attempt $n failed, retrying in 5s..."
+            sleep 5
+          done
+          if [ $n -ge 3 ]; then
+            echo "[ERROR] SSH failed after retries"
+            exit 1
+          fi
