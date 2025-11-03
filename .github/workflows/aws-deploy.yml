@@ -21,17 +21,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Java para compilar los jars
       - name: Setup Temurin JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
+      - name: Set TAG once
+        run: echo "IMAGE_TAG=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+
       - name: Maven package
         run: ./mvnw -q -T 1C -DskipTests clean package
 
-      # Login a ECR
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -44,9 +45,11 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build & Push images
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           ECR=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-          TAG=$(date +%Y%m%d-%H%M%S)
+          TAG=$(IMAGE_TAG)
           
           declare -a svc=("config-service" "eureka-service" "iam-service" "fleet-service" "delivery-service" "gateway-service")
 
@@ -57,9 +60,6 @@ jobs:
             docker push $ECR/$s:$TAG
             docker push $ECR/$s:latest
           done
-
-      - name: Save tag for deploy
-        run: echo "IMAGE_TAG=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
 
   deploy:
     name: Deploy on EC2 via SSH
@@ -78,102 +78,6 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
 
-      - name: Render compose file with ECR images
-        run: |
-          ECR=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-          cat > docker-compose.aws.yml <<'EOF'
-          name: microservices
-          services:
-            config-service:
-              image: ECR/config-service:latest
-              container_name: config-service
-              environment:
-                - SPRING_PROFILES_ACTIVE=native
-              ports: ["8888:8888"]
-              healthcheck:
-                test: ["CMD","curl","-f","http://localhost:8888/actuator/health"]
-                interval: 10s
-                timeout: 3s
-                retries: 20
-              restart: unless-stopped
-          
-            eureka-service:
-              image: ECR/eureka-service:latest
-              container_name: eureka-service
-              depends_on:
-                config-service:
-                  condition: service_healthy
-              ports: ["8761:8761"]
-              healthcheck:
-                test: ["CMD","curl","-f","http://localhost:8761/actuator/health"]
-                interval: 10s
-                timeout: 3s
-                retries: 20
-              restart: unless-stopped
-          
-            iam-service:
-              image: ECR/iam-service:latest
-              container_name: iam-service
-              depends_on:
-                eureka-service:
-                  condition: service_healthy
-              # SIN .env: el runtime heredará variables ya exportadas por 'source /opt/cobox/cobox-env.sh'
-              healthcheck:
-                test: ["CMD","curl","-f","http://localhost:8081/actuator/health"]
-                interval: 10s
-                timeout: 3s
-                retries: 20
-              restart: unless-stopped
-          
-            fleet-service:
-              image: ECR/fleet-service:latest
-              container_name: fleet-service
-              depends_on:
-                iam-service:
-                  condition: service_healthy
-              healthcheck:
-                test: ["CMD","curl","-f","http://localhost:8082/actuator/health"]
-                interval: 10s
-                timeout: 3s
-                retries: 20
-              restart: unless-stopped
-          
-            delivery-service:
-              image: ECR/delivery-service:latest
-              container_name: delivery-service
-              depends_on:
-                iam-service:
-                  condition: service_healthy
-              healthcheck:
-                test: ["CMD","curl","-f","http://localhost:8083/actuator/health"]
-                interval: 10s
-                timeout: 3s
-                retries: 20
-              restart: unless-stopped
-          
-            gateway-service:
-              image: ECR/gateway-service:latest
-              container_name: gateway-service
-              depends_on:
-                eureka-service:
-                  condition: service_healthy
-                iam-service:
-                  condition: service_healthy
-                fleet-service:
-                  condition: service_healthy
-                delivery-service:
-                  condition: service_healthy
-              ports: ["80:8080"]
-              healthcheck:
-                test: ["CMD","curl","-f","http://localhost:8080/actuator/health"]
-                interval: 10s
-                timeout: 3s
-                retries: 25
-              restart: unless-stopped
-          EOF
-          
-          sed -i "s|ECR|$ECR|g" docker-compose.aws.yml
-
       - name: Prep remote dir (/opt/cobox)
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
@@ -185,41 +89,69 @@ jobs:
 
       - name: Deploy remotely (pull & up)
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<EOF
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
             set -e
 
-            # Inyectar variables desde GitHub en la sesión remota
+            # ====== Variables mínimas necesarias ======
             AWS_REGION="${{ env.AWS_REGION }}"
             AWS_ACCOUNT_ID="${{ env.AWS_ACCOUNT_ID }}"
-            ECR="\${AWS_ACCOUNT_ID}.dkr.ecr.\${AWS_REGION}.amazonaws.com"
+            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+            TAG=latest   # usamos :latest en deploy; tus pushes suben :latest y :timestamp
 
             cd /opt/cobox
 
-            # Asegurar docker corriendo
-            if ! sudo systemctl is-active --quiet docker; then
-              sudo systemctl start docker
-            fi
-
-            # Elegir compose (plugin o binario)
-            if docker compose version >/dev/null 2>&1; then
-              DC="docker compose"
-            elif command -v docker-compose >/dev/null 2>&1; then
-              DC="docker-compose"
-            else
-              echo "[ERROR] No hay docker compose instalado"; exit 1
-            fi
-
-            # Login a ECR usando el rol de la instancia
-            aws ecr get-login-password --region "\$AWS_REGION" \
-              | docker login --username AWS --password-stdin "\$ECR"
-
-            # Cargar variables locales si tienes script
+            # .env para que docker-compose resuelva ${ECR} y ${TAG}
+            cat > .env <<EONV
+            ECR=${ECR}
+            TAG=${TAG}
+            EONV
+          
             if [ -f /opt/cobox/cobox-env.sh ]; then
-              . /opt/cobox/cobox-env.sh
+            . /opt/cobox/cobox-env.sh
             fi
-
+          
+            if ! sudo systemctl is-active --quiet docker; then
+            sudo systemctl start docker
+            fi
+          
+            if docker compose version >/dev/null 2>&1; then
+            DC="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+            DC="docker-compose"
+            else
+            echo "[ERROR] No hay docker compose instalado"; exit 1
+            fi
+          
+            aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$ECR"
+          
             export COMPOSE_PROJECT_NAME=cobox
-            \$DC -f docker-compose.aws.yml pull
-            \$DC -f docker-compose.aws.yml up -d
-            \$DC -f docker-compose.aws.yml ps
-          EOF
+            export COMPOSE_HTTP_TIMEOUT=600
+          
+            # Verificar imágenes resueltas (debug)
+            echo "=== IMAGES ==="
+            $DC -f docker-compose.aws.yml config | sed -n 's/^[[:space:]]*image:[[:space:]]*//p'
+          
+            # Pull + Up
+            $DC -f docker-compose.aws.yml pull || true
+            $DC -f docker-compose.aws.yml up -d || true
+          
+            echo "=== docker ps ==="
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          
+            echo "=== compose ps ==="
+            $DC -f docker-compose.aws.yml ps || true
+          
+            # Si algo queda mal, dump de logs y exit 1 para verlo en Actions
+            BAD=$($DC -f docker-compose.aws.yml ps 2>/dev/null | awk '/unhealthy|starting|restarting|Exit/ {print $1}')
+            if [ -n "$BAD" ]; then
+            echo "=== Dumping logs for: $BAD ==="
+            for s in $BAD; do
+            echo "--- LOGS: $s (last 200) ---"
+            docker logs --tail 200 $s || true
+            done
+            exit 1
+            fi
+          
+            echo "[OK] Deploy done"
+            EOF
