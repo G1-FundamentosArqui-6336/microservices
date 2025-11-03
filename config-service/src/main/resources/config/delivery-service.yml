@@ -15,7 +15,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate # 'validate' o 'none' en producción
+      ddl-auto: update # 'validate' o 'none' en producción
       naming:
         physical-strategy: org.upc.deliveryservice.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
     show-sql: true
