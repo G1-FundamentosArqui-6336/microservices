@@ -49,7 +49,7 @@ jobs:
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           ECR=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-          TAG=$(IMAGE_TAG)
+          TAG="$IMAGE_TAG"
           
           declare -a svc=("config-service" "eureka-service" "iam-service" "fleet-service" "delivery-service" "gateway-service")
 
