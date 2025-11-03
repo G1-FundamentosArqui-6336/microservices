@@ -87,84 +87,74 @@ jobs:
       - name: Copy compose to EC2
         run: |
           SCP_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ConnectionAttempts=3 -vvv"
-          scp $SCP_OPTS -i key.pem docker-compose.aws.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/cobox/
+          scp $SCP_OPTS -i key.pem docker-compose.aws.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/cobox/
 
-      - name: Deploy remotely (pull & up)
+      - name: Deploy remotely (pull & up) [fixed heredoc/indent]
         run: |
-          SSH_OPTS="-o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ConnectionAttempts=3 -vvv"
-          n=0
-          until [ $n -ge 3 ]; do
-          ssh $SSH_OPTS -i key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF' && break
-            set -e
+          set -euo pipefail
 
-            # ====== Variables mínimas necesarias ======
-            AWS_REGION="${{ env.AWS_REGION }}"
-            AWS_ACCOUNT_ID="${{ env.AWS_ACCOUNT_ID }}"
-            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-            TAG=latest   # usamos :latest en deploy; tus pushes suben :latest y :timestamp
+          SSH_OPTS="-o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ConnectionAttempts=3"
+          rc=1
 
-            cd /opt/cobox
+          for n in 1 2 3; do
+            ssh $SSH_OPTS -i key.pem "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+              AWS_REGION='${{ env.AWS_REGION }}' AWS_ACCOUNT_ID='${{ env.AWS_ACCOUNT_ID }}' bash -se <<'EOSSH'
+          set -euo pipefail
+          
+          ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          TAG=latest
+          
+          cd /opt/cobox
+          
+          printf "ECR=%s\nTAG=%s\n" "$ECR" "$TAG" > .env
 
-            # .env para que docker-compose resuelva ${ECR} y ${TAG}
-            cat > .env <<EONV
-            ECR=${ECR}
-            TAG=${TAG}
-            EONV
+          [ -f /opt/cobox/cobox-env.sh ] && . /opt/cobox/cobox-env.sh || true
           
-            if [ -f /opt/cobox/cobox-env.sh ]; then
-            . /opt/cobox/cobox-env.sh
-            fi
+          sudo systemctl is-active --quiet docker || sudo systemctl start docker
           
-            if ! sudo systemctl is-active --quiet docker; then
-            sudo systemctl start docker
-            fi
-          
-            if docker compose version >/dev/null 2>&1; then
+          if docker compose version >/dev/null 2>&1; then
             DC="docker compose"
-            elif command -v docker-compose >/dev/null 2>&1; then
+          elif command -v docker-compose >/dev/null 2>&1; then
             DC="docker-compose"
-            else
-            echo "[ERROR] No hay docker compose instalado"; exit 1
-            fi
+          else
+            echo "[ERROR] docker compose no instalado"; exit 1
+          fi
           
-            aws ecr get-login-password --region "$AWS_REGION" \
+          aws ecr get-login-password --region "$AWS_REGION" \
             | docker login --username AWS --password-stdin "$ECR"
           
-            export COMPOSE_PROJECT_NAME=cobox
-            export COMPOSE_HTTP_TIMEOUT=600
+          export COMPOSE_PROJECT_NAME=cobox
+          export COMPOSE_HTTP_TIMEOUT=600
           
-            # Verificar imágenes resueltas (debug)
-            echo "=== IMAGES ==="
-            $DC -f docker-compose.aws.yml config | sed -n 's/^[[:space:]]*image:[[:space:]]*//p'
+          echo "=== IMAGES (resolved) ==="
+          $DC -f docker-compose.aws.yml config | sed -n 's/^[[:space:]]*image:[[:space:]]*//p' || true
           
-            # Pull + Up
-            $DC -f docker-compose.aws.yml pull || true
-            $DC -f docker-compose.aws.yml up -d || true
+          $DC -f docker-compose.aws.yml pull || true
+          $DC -f docker-compose.aws.yml up -d || true
           
-            echo "=== docker ps ==="
-            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          echo "=== docker ps ==="
+          docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
           
-            echo "=== compose ps ==="
-            $DC -f docker-compose.aws.yml ps || true
+          echo "=== compose ps ==="
+          $DC -f docker-compose.aws.yml ps || true
           
-            # Si algo queda mal, dump de logs y exit 1 para verlo en Actions
-            BAD=$($DC -f docker-compose.aws.yml ps 2>/dev/null | awk '/unhealthy|starting|restarting|Exit/ {print $1}')
-            if [ -n "$BAD" ]; then
+          BAD=$($DC -f docker-compose.aws.yml ps 2>/dev/null | awk '/unhealthy|starting|restarting|Exit/ {print $1}')
+          if [ -n "$BAD" ]; then
             echo "=== Dumping logs for: $BAD ==="
             for s in $BAD; do
-            echo "--- LOGS: $s (last 200) ---"
-            docker logs --tail 200 $s || true
+              echo "--- LOGS: $s (last 200) ---"
+              docker logs --tail 200 "$s" || true
             done
             exit 1
-            fi
+          fi
           
-            echo "[OK] Deploy done"
-            EOF
-            n=$((n+1))
-            echo "[WARN] SSH attempt $n failed, retrying in 5s..."
+          echo "[OK] Deploy done"
+          EOSSH
+            rc=$?
+            [ $rc -eq 0 ] && break
+            echo "[WARN] SSH attempt $n failed (rc=$rc); retrying in 5s..."
             sleep 5
           done
-          if [ $n -ge 3 ]; then
-            echo "[ERROR] SSH failed after retries"
-            exit 1
-          fi
+          
+          [ $rc -eq 0 ] || { echo "[ERROR] SSH failed after retries"; exit 1; }
