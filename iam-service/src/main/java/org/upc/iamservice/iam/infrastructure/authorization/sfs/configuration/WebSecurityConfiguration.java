@@ -15,12 +15,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
 import org.upc.iamservice.iam.infrastructure.authorization.sfs.pipeline.BearerAuthorizationRequestFilter;
 import org.upc.iamservice.iam.infrastructure.hashing.bcrypt.BCryptHashingService;
 import org.upc.iamservice.iam.infrastructure.tokens.jwt.BearerTokenService;
-
-import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
@@ -68,13 +65,7 @@ public class WebSecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         // CORS default configuration
-        http.cors(configurer -> configurer.configurationSource(ignored -> {
-            var cors = new CorsConfiguration();
-            cors.setAllowedOrigins(List.of("*"));
-            cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
-            cors.setAllowedHeaders(List.of("*"));
-            return cors;
-        }));
+        http.cors(AbstractHttpConfigurer::disable);
 
         // CSRF disabled
         http.csrf(AbstractHttpConfigurer::disable);

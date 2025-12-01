@@ -2,6 +2,7 @@ package org.upc.gatewayservice.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -15,24 +16,25 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
 
         http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(Customizer.withDefaults())
                 .authorizeExchange(exchange -> exchange
-                        // --- RUTAS PÚBLICAS ---
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers(
                                 "/api/v1/authentication/**",
                                 "/api/v1/jwks/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
-                                "/webjars/**",                // 👈 necesario para recursos estáticos
-                                "/v3/api-docs/**",            // 👈 necesario para el spec JSON
-                                "/*/v3/api-docs/**",          // 👈 docs de microservicios vía gateway
-                                "/swagger-resources/**",      // 👈 para swagger-config interno
-                                "/swagger-config/**",          // 👈 algunas versiones lo usan
+                                "/webjars/**",
+                                "/v3/api-docs/**",
+                                "/*/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/swagger-config/**",
                                 "/actuator/**"
                         ).permitAll()
                         .anyExchange().authenticated()
                 )
-                .oauth2ResourceServer(spec -> spec.jwt(Customizer.withDefaults()))
-                .csrf(ServerHttpSecurity.CsrfSpec::disable);
+                .oauth2ResourceServer(spec -> spec.jwt(Customizer.withDefaults()));
 
         return http.build();
     }
