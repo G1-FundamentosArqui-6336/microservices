@@ -9,9 +9,9 @@ spring:
           jwk-set-uri: "http://iam-service:8081/api/v1/jwks/.well-known/jwks.json"
 
   datasource:
-    url: jdbc:postgresql://${POSTGRESHOST}:${POSTGRESPORT}/${POSTGRES_DATABASE}
-    username: ${POSTGRESUSER:postgres}
-    password: ${POSTGRESPASSWORD:password}
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
