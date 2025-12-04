@@ -17,6 +17,8 @@ services:
     depends_on:
       config-service:
         condition: service_healthy
+    ports:
+        - "127.0.0.1:8761:8761"
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8761/actuator/health" ]
       interval: 10s
