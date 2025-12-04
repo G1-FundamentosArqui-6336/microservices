@@ -18,7 +18,7 @@ services:
       config-service:
         condition: service_healthy
     ports:
-        - "127.0.0.1:8761:8761"
+      - "127.0.0.1:8761:8761"
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8761/actuator/health" ]
       interval: 10s
@@ -105,3 +105,26 @@ services:
       timeout: 3s
       retries: 25
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - /opt/cobox/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - gateway-service
+    networks:
+      - default
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - default

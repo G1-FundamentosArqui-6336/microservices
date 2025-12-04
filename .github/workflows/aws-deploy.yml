@@ -87,7 +87,7 @@ jobs:
       - name: Copy compose to EC2
         run: |
           SCP_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o ConnectionAttempts=3 -vvv"
-          scp $SCP_OPTS -i key.pem docker-compose.aws.yml \
+          scp $SCP_OPTS -i key.pem docker-compose.aws.yml prometheus.yml \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/cobox/
 
       - name: Deploy remotely (pull & up) [fixed heredoc/indent]
