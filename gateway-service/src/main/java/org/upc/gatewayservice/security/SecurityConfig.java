@@ -30,7 +30,8 @@ public class SecurityConfig {
                                 "/*/v3/api-docs/**",
                                 "/swagger-resources/**",
                                 "/swagger-config/**",
-                                "/actuator/**"
+                                "/actuator/**",
+                                "/actuator/rate-limit/**"
                         ).permitAll()
                         .anyExchange().authenticated()
                 )
