@@ -122,9 +122,9 @@ Start-Sleep -Seconds 2
 # ================================================
 Write-Host "`n4. Testing Global Fallback..." -ForegroundColor Yellow
 Write-Host "   Config: 100 req / 10s (Global)" -ForegroundColor Gray
-Write-Host "   Targeting unmapped path: /random-service/resource" -ForegroundColor Gray
+Write-Host "   Targeting path: /api/v1/drivers" -ForegroundColor Gray
 
-$targetUri = "$BaseUrl/random-service/resource"
+$targetUri = "$BaseUrl/api/v1/drivers"
 $allowed = 0
 $blocked = 0
 
