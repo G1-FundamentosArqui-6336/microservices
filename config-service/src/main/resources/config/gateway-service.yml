@@ -63,3 +63,41 @@ springdoc:
         url: /delivery-service/v3/api-docs
       - name: fleet-service
         url: /fleet-service/v3/api-docs
+
+# ==========================================
+# Rate Limiting Configuration
+# ==========================================
+gateway:
+  rate-limit:
+    enabled: true
+    include-headers: true
+
+    global:
+      max-requests: 100
+      window-seconds: 10
+
+    endpoints:
+      # Authentication Endpoints - medium limit
+      "/api/v1/authentication/**":
+        max-requests: 20  # 20 login/register requests
+        window-seconds: 60  # per minute
+
+      # Actuator and Swagger Endpoints - high limit
+      "/actuator/**":
+        max-requests: 200
+        window-seconds: 10
+
+      "/swagger-ui/**":
+        max-requests: 200
+        window-seconds: 10
+
+      # Order Endpoints - moderate limit
+      "/api/v1/orders/**":
+        max-requests: 50
+        window-seconds: 10
+
+      # Client Endpoints - moderate limit
+      "/api/v1/client/**":
+        max-requests: 50
+        window-seconds: 10
+
