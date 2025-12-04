@@ -4,6 +4,3 @@ spring:
   config:
     import: "optional:configserver:http://config-service:8888"
 
-management:
-  endpoints.web.exposure.include: "health,info"
-  endpoint.health.probes.enabled: true
