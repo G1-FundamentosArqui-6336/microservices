@@ -133,13 +133,19 @@ jobs:
           $DC -f docker-compose.aws.yml pull || true
           $DC -f docker-compose.aws.yml up -d || true
           
-          echo "=== docker ps ==="
-          docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          echo "=== Esperando a que los servicios estén healthy ==="
+          for i in $(seq 1 12); do 
+            BAD=$($DC -f docker-compose.aws.yml ps 2>/dev/null | awk '/unhealthy|Exit/ {print $1}')
+            STARTING=$($DC -f docker-compose.aws.yml ps 2>/dev/null | awk '/starting/ {print $1}')
+          echo "Intento $i: BAD=[$BAD] STARTING=[$STARTING]"
+            if [ -z "$BAD" ] && [ -z "$STARTING" ]; then
+              echo "[OK] Todos los servicios están healthy"
+              break
+            fi
+            sleep 10
+          done      
           
-          echo "=== compose ps ==="
-          $DC -f docker-compose.aws.yml ps || true
-          
-          BAD=$($DC -f docker-compose.aws.yml ps 2>/dev/null | awk '/unhealthy|starting|restarting|Exit/ {print $1}')
+          BAD=$($DC -f docker-compose.aws.yml ps 2>/dev/null | awk '/unhealthy|Exit/ {print $1}')
           if [ -n "$BAD" ]; then
             echo "=== Dumping logs for: $BAD ==="
             for s in $BAD; do
