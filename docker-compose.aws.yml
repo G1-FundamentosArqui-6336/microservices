@@ -139,7 +139,7 @@ services:
       - /opt/cobox/data/certbot/conf:/etc/letsencrypt
       - /opt/cobox/data/certbot/www:/var/www/certbot
     # Usamos --staging para la primera prueba de despliegue. Quítalo para producción.
-    command: certonly --webroot --webroot-path=/var/www/certbot --email davidalexd1234@gmail.com --agree-tos --no-eff-email --staging -d cobox.duckdns.org
+    command: certonly --webroot --webroot-path=/var/www/certbot --email davidalexd1234@gmail.com --agree-tos --no-eff-email -d cobox.duckdns.org
     # IMPORTANTE: Este servicio se ejecuta manualmente o mediante un cron job.
 
   # 9. PROMETHEUS (SIN CAMBIOS Mayores)
@@ -166,4 +166,3 @@ services:
       - prometheus
     networks:
       - default
-
