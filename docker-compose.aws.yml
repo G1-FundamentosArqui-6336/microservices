@@ -1,16 +1,21 @@
 services:
+  # 1. CONFIG SERVICE (SIN CAMBIOS Mayores)
   config-service:
     image: "${ECR}/config-service:${TAG:-latest}"
     container_name: config-service
     environment:
       - SPRING_PROFILES_ACTIVE=native
+      # Asumimos que las variables de DB ya están en el archivo de entorno de EC2,
+      # o se gestionan a través del Config Server.
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8888/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 25
     restart: unless-stopped
+    # Nota: Asegúrate de que este servicio pueda acceder a las credenciales de la DB de Staging.
 
+  # 2. EUREKA SERVICE (SIN CAMBIOS Mayores)
   eureka-service:
     image: "${ECR}/eureka-service:${TAG:-latest}"
     container_name: eureka-service
@@ -26,6 +31,7 @@ services:
       retries: 25
     restart: unless-stopped
 
+  # 3. IAM SERVICE (SIN CAMBIOS Mayores)
   iam-service:
     image: "${ECR}/iam-service:${TAG:-latest}"
     container_name: iam-service
@@ -46,6 +52,7 @@ services:
       retries: 25
     restart: unless-stopped
 
+  # 4. FLEET SERVICE (SIN CAMBIOS Mayores)
   fleet-service:
     image: "${ECR}/fleet-service:${TAG:-latest}"
     container_name: fleet-service
@@ -66,6 +73,7 @@ services:
       retries: 25
     restart: unless-stopped
 
+  # 5. DELIVERY SERVICE (SIN CAMBIOS Mayores)
   delivery-service:
     image: "${ECR}/delivery-service:${TAG:-latest}"
     container_name: delivery-service
@@ -86,9 +94,10 @@ services:
       retries: 25
     restart: unless-stopped
 
+  # 6. GATEWAY SERVICE (MODIFICADO: Sin ports ni container_name)
   gateway-service:
     image: "${ECR}/gateway-service:${TAG:-latest}"
-    container_name: gateway-service
+    # ELIMINADO: container_name (para escalabilidad)
     depends_on:
       eureka-service:
         condition: service_healthy
@@ -98,7 +107,7 @@ services:
         condition: service_healthy
       delivery-service:
         condition: service_healthy
-    ports: [ "80:8080" ]
+    # ELIMINADO: ports: [ "80:8080" ] (ahora Nginx lo maneja)
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8080/actuator/health" ]
       interval: 10s
@@ -106,6 +115,34 @@ services:
       retries: 25
     restart: unless-stopped
 
+  # 7. NGINX REVERSE PROXY / LOAD BALANCER (NUEVO para SSL)
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    depends_on:
+      gateway-service:
+        condition: service_started
+    ports:
+      - "80:80"   # Puerto HTTP (Necesario para Certbot validation)
+      - "443:443" # Puerto HTTPS
+    volumes:
+      # Asumo que estos son los paths persistentes en tu EC2
+      - /opt/cobox/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /opt/cobox/data/certbot/conf:/etc/nginx/ssl:ro
+      - /opt/cobox/data/certbot/www:/var/www/certbot:ro
+    restart: unless-stopped
+
+  # 8. CERTBOT (NUEVO - Para obtener certificados)
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - /opt/cobox/data/certbot/conf:/etc/letsencrypt
+      - /opt/cobox/data/certbot/www:/var/www/certbot
+    # Usamos --staging para la primera prueba de despliegue. Quítalo para producción.
+    command: certonly --webroot --webroot-path=/var/www/certbot --email davidalexd1234@gmail.com --agree-tos --no-eff-email --staging -d cobox.duckdns.org
+    # IMPORTANTE: Este servicio se ejecuta manualmente o mediante un cron job.
+
+  # 9. PROMETHEUS (SIN CAMBIOS Mayores)
   prometheus:
     image: prom/prometheus:latest
     volumes:
@@ -117,6 +154,7 @@ services:
     networks:
       - default
 
+  # 10. GRAFANA (SIN CAMBIOS Mayores)
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -128,3 +166,4 @@ services:
       - prometheus
     networks:
       - default
+

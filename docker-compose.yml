@@ -1,4 +1,22 @@
 services:
+  # 1. SERVICIO DE BASE DE DATOS POSTGRESQL (Para Entorno Local)
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: postgres_db
+      POSTGRES_USER: admin_postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_postgres -d postgres_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # 2. CONFIG SERVICE
   config-service:
     build: ./config-service
     container_name: config-service
@@ -10,77 +28,92 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
+  # 3. EUREKA SERVICE
   eureka-service:
     build: ./eureka-service
     container_name: eureka-service
     depends_on:
       config-service:
         condition: service_healthy
-    ports: [ "8761:8761" ]   # solo para ver dashboard en local
+    ports: [ "8761:8761" ]
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8761/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
+  # 4. IAM SERVICE
   iam-service:
     build: ./iam-service
     container_name: iam-service
     depends_on:
       eureka-service:
         condition: service_healthy
+      postgres-db:
+        condition: service_healthy
     environment:
-      - POSTGRES_HOST=${IAM_POSTGRES_HOST}
-      - POSTGRES_PORT=${IAM_POSTGRES_PORT}
-      - POSTGRES_DATABASE=${IAM_POSTGRES_DATABASE}
-      - POSTGRES_USER=${IAM_POSTGRES_USER}
-      - POSTGRES_PASSWORD=${IAM_POSTGRES_PASSWORD}
+      - POSTGRES_HOST=postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DATABASE=postgres_db
+      - POSTGRES_USER=admin_postgres
+      - POSTGRES_PASSWORD=secret
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8081/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
+  # 5. FLEET SERVICE
   fleet-service:
     build: ./fleet-service
     container_name: fleet-service
     depends_on:
       iam-service:
         condition: service_healthy
+      postgres-db:
+        condition: service_healthy
     environment:
-      - POSTGRES_HOST=${FLEET_POSTGRES_HOST}
-      - POSTGRES_PORT=${FLEET_POSTGRES_PORT}
-      - POSTGRES_DATABASE=${FLEET_POSTGRES_DATABASE}
-      - POSTGRES_USER=${FLEET_POSTGRES_USER}
-      - POSTGRES_PASSWORD=${FLEET_POSTGRES_PASSWORD}
+      - POSTGRES_HOST=postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DATABASE=postgres_db
+      - POSTGRES_USER=admin_postgres
+      - POSTGRES_PASSWORD=secret
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8082/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
+  # 6. DELIVERY SERVICE
   delivery-service:
     build: ./delivery-service
     container_name: delivery-service
     depends_on:
       iam-service:
         condition: service_healthy
+      postgres-db:
+        condition: service_healthy
     environment:
-      - POSTGRES_HOST=${DELIVERY_POSTGRES_HOST}
-      - POSTGRES_PORT=${DELIVERY_POSTGRES_PORT}
-      - POSTGRES_DATABASE=${DELIVERY_POSTGRES_DATABASE}
-      - POSTGRES_USER=${DELIVERY_POSTGRES_USER}
-      - POSTGRES_PASSWORD=${DELIVERY_POSTGRES_PASSWORD}
+      - POSTGRES_HOST=postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DATABASE=postgres_db
+      - POSTGRES_USER=admin_postgres
+      - POSTGRES_PASSWORD=secret
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8083/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
+  # 7. GATEWAY SERVICE (Escalable)
   gateway-service:
     build: ./gateway-service
-    container_name: gateway-service
     depends_on:
       eureka-service:
         condition: service_healthy
@@ -90,13 +123,38 @@ services:
         condition: service_healthy
       delivery-service:
         condition: service_healthy
-    ports: [ "8080:8080" ]
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
+  # 8. NGINX REVERSE PROXY / LOAD BALANCER (MODIFICADO para SSL)
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    depends_on:
+      gateway-service:
+        condition: service_started
+    ports:
+      - "80:80"   # Puerto HTTP (necesario para Certbot validation)
+      - "443:443" # Puerto HTTPS
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./data/certbot/conf:/etc/nginx/ssl:ro  # Certificados Let's Encrypt
+      - ./data/certbot/www:/var/www/certbot:ro # Archivos de validación
+    restart: unless-stopped
+
+  # 9. CERTBOT (NUEVO - Para obtener certificados)
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email davidalexd1234@gmail.com --agree-tos --no-eff-email --staging -d cobox.duckdns.org
+
+  # 10. PROMETHEUS
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -109,6 +167,7 @@ services:
     networks:
       - default
 
+  # 11. GRAFANA
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -120,3 +179,10 @@ services:
       - prometheus
     networks:
       - default
+
+networks:
+  default:
+    name: microservices_network
+
+volumes:
+  data: # Para la persistencia de los certificados
