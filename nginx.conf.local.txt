@@ -1,0 +1,27 @@
+events {}
+http {
+    proxy_read_timeout 90s;
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 30s;
+
+    resolver 127.0.0.11 valid=5s; # DNS interno de Docker Compose
+
+    upstream gateway_upstream {
+        zone gateway_cluster 64k;
+        server gateway-service:8080 resolve;
+    }
+
+    # Servidor HTTP en puerto 80
+    server {
+        listen 80;
+        server_name _;  # Acepta cualquier dominio/IP
+
+        # Proxy Reverso al Gateway
+        location / {
+            proxy_pass http://gateway_upstream;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+}
