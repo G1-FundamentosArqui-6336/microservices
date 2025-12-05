@@ -32,7 +32,7 @@ public class SecurityConfig {
                         new PathPatternParserServerWebExchangeMatcher("/actuator/**")
                 ))
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .cors(Customizer.withDefaults())
+                .cors(ServerHttpSecurity.CorsSpec::disable) // Usaremos CorsWebFilter en su lugar
                 .authorizeExchange(exchange -> exchange.anyExchange().permitAll());
 
         return http.build();
