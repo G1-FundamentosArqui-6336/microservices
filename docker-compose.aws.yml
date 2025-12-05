@@ -1,24 +1,23 @@
+version: '3.8'
+
 services:
   # 1. CONFIG SERVICE (SIN CAMBIOS Mayores)
   config-service:
     image: "${ECR}/config-service:${TAG:-latest}"
-    container_name: config-service
+    container_name: config-service # Mantenemos, ya que solo debe haber 1 Config Server
     environment:
       - SPRING_PROFILES_ACTIVE=native
-      # Asumimos que las variables de DB ya están en el archivo de entorno de EC2,
-      # o se gestionan a través del Config Server.
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8888/actuator/health" ]
       interval: 10s
       timeout: 3s
       retries: 25
     restart: unless-stopped
-    # Nota: Asegúrate de que este servicio pueda acceder a las credenciales de la DB de Staging.
 
   # 2. EUREKA SERVICE (SIN CAMBIOS Mayores)
   eureka-service:
     image: "${ECR}/eureka-service:${TAG:-latest}"
-    container_name: eureka-service
+    container_name: eureka-service # Mantenemos, ya que solo debe haber 1 Eureka Server
     depends_on:
       config-service:
         condition: service_healthy
@@ -31,10 +30,10 @@ services:
       retries: 25
     restart: unless-stopped
 
-  # 3. IAM SERVICE (SIN CAMBIOS Mayores)
+  # 3. IAM SERVICE (CORREGIDO: Eliminado container_name para permitir Scaling)
   iam-service:
     image: "${ECR}/iam-service:${TAG:-latest}"
-    container_name: iam-service
+    # ELIMINADO: container_name: iam-service
     depends_on:
       eureka-service:
         condition: service_healthy
@@ -52,10 +51,10 @@ services:
       retries: 25
     restart: unless-stopped
 
-  # 4. FLEET SERVICE (SIN CAMBIOS Mayores)
+  # 4. FLEET SERVICE (CORREGIDO: Eliminado container_name para permitir Scaling)
   fleet-service:
     image: "${ECR}/fleet-service:${TAG:-latest}"
-    container_name: fleet-service
+    # ELIMINADO: container_name: fleet-service
     depends_on:
       iam-service:
         condition: service_healthy
@@ -73,10 +72,10 @@ services:
       retries: 25
     restart: unless-stopped
 
-  # 5. DELIVERY SERVICE (SIN CAMBIOS Mayores)
+  # 5. DELIVERY SERVICE (CORREGIDO: Eliminado container_name para permitir Scaling)
   delivery-service:
     image: "${ECR}/delivery-service:${TAG:-latest}"
-    container_name: delivery-service
+    # ELIMINADO: container_name: delivery-service
     depends_on:
       iam-service:
         condition: service_healthy
@@ -94,10 +93,10 @@ services:
       retries: 25
     restart: unless-stopped
 
-  # 6. GATEWAY SERVICE (MODIFICADO: Sin ports ni container_name)
+  # 6. GATEWAY SERVICE (Ya estaba corregido)
   gateway-service:
     image: "${ECR}/gateway-service:${TAG:-latest}"
-    # ELIMINADO: container_name (para escalabilidad)
+    # ELIMINADO: container_name (correcto)
     depends_on:
       eureka-service:
         condition: service_healthy
@@ -107,7 +106,6 @@ services:
         condition: service_healthy
       delivery-service:
         condition: service_healthy
-    # ELIMINADO: ports: [ "80:8080" ] (ahora Nginx lo maneja)
     healthcheck:
       test: [ "CMD","curl","-f","http://localhost:8080/actuator/health" ]
       interval: 10s
@@ -115,7 +113,7 @@ services:
       retries: 25
     restart: unless-stopped
 
-  # 7. NGINX REVERSE PROXY / LOAD BALANCER (NUEVO para SSL)
+  # 7. NGINX REVERSE PROXY / LOAD BALANCER (Mantenemos container_name)
   nginx:
     image: nginx:latest
     container_name: nginx
@@ -123,28 +121,27 @@ services:
       gateway-service:
         condition: service_started
     ports:
-      - "80:80"   # Puerto HTTP (Necesario para Certbot validation)
-      - "443:443" # Puerto HTTPS
+      - "80:80"
+      - "443:443"
     volumes:
-      # Asumo que estos son los paths persistentes en tu EC2
       - /opt/cobox/nginx.conf:/etc/nginx/nginx.conf:ro
       - /opt/cobox/data/certbot/conf:/etc/nginx/ssl:ro
       - /opt/cobox/data/certbot/www:/var/www/certbot:ro
     restart: unless-stopped
 
-  # 8. CERTBOT (NUEVO - Para obtener certificados)
+  # 8. CERTBOT (CORREGIDO: No necesita container_name en despliegue)
   certbot:
     image: certbot/certbot
+    # ELIMINADO: container_name: certbot (si lo tenía)
     volumes:
       - /opt/cobox/data/certbot/conf:/etc/letsencrypt
       - /opt/cobox/data/certbot/www:/var/www/certbot
-    # Usamos --staging para la primera prueba de despliegue. Quítalo para producción.
     command: certonly --webroot --webroot-path=/var/www/certbot --email davidalexd1234@gmail.com --agree-tos --no-eff-email -d cobox.duckdns.org
-    # IMPORTANTE: Este servicio se ejecuta manualmente o mediante un cron job.
 
-  # 9. PROMETHEUS (SIN CAMBIOS Mayores)
+  # 9. PROMETHEUS (Mantenemos container_name)
   prometheus:
     image: prom/prometheus:latest
+    # ELIMINADO: container_name: prometheus
     volumes:
       - /opt/cobox/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
@@ -154,7 +151,7 @@ services:
     networks:
       - default
 
-  # 10. GRAFANA (SIN CAMBIOS Mayores)
+  # 10. GRAFANA (Mantenemos container_name)
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
