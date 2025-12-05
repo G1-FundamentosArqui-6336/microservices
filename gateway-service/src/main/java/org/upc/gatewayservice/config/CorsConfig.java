@@ -15,7 +15,7 @@ public class CorsConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
 
-        // Permitir orígenes (localhost con HTTP y HTTPS, más tu dominio)
+        // Permitir orígenes (localhost con HTTP y HTTPS, más tu dominio y frontend)
         corsConfig.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost",
                 "http://localhost:*",
@@ -26,7 +26,10 @@ public class CorsConfig {
                 "https://127.0.0.1",
                 "https://127.0.0.1:*",
                 "https://cobox.duckdns.org",
-                "http://cobox.duckdns.org"
+                "http://cobox.duckdns.org",
+                "https://app-cobox.web.app",
+                "https://*.web.app",
+                "https://*.firebaseapp.com"
         ));
 
         // Permitir todos los métodos HTTP
