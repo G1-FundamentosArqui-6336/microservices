@@ -43,7 +43,7 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .cors(Customizer.withDefaults())
+                .cors(ServerHttpSecurity.CorsSpec::disable) // Usaremos CorsWebFilter en su lugar
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyExchange().authenticated()
